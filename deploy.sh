@@ -25,6 +25,7 @@ source venv/bin/activate
 # Install Python dependencies
 echo "📚 Installing Python dependencies..."
 pip install --upgrade pip
+chmod 777 requirements.txt
 pip install -r requirements.txt
 
 # Create uploads directory

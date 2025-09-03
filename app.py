@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory
 from google import genai
+import os
 
 
 app = Flask(__name__, static_folder='.')

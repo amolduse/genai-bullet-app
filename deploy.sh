@@ -1,51 +1,71 @@
 #!/bin/bash
 
-echo "🚀 Deploying GenAI Bullet App & File Upload System to AWS Ubuntu Server"
+# Stop on any error
+set -e
+
+echo "🚀 Deploying GenAI Bullet App to AWS Ubuntu Server"
 echo "=================================================================="
+
+# Check for GENAI_API_KEY
+if [ -z "$GENAI_API_KEY" ]; then
+  echo "🛑 GENAI_API_KEY environment variable is not set."
+  echo "   Please set it before running this script:"
+  echo "   export GENAI_API_KEY='your_api_key'"
+  exit 1
+fi
+
+# App settings
+APP_DIR="/var/www/genai-bullet-app"
+USER="ubuntu"
 
 # Update system
 echo "📦 Updating system packages..."
-sudo apt update && sudo apt upgrade -y
+sudo apt-get update && sudo apt-get upgrade -y
 
 # Install required packages
 echo "🔧 Installing required packages..."
-sudo apt install python3 python3-pip python3-venv nginx build-essential python3-dev -y
+sudo apt-get install -y python3 python3-pip python3-venv nginx build-essential python3-dev
 
 # Create application directory
 echo "📁 Setting up application directory..."
-sudo mkdir -p /var/www/genai-bullet-app
-sudo chown ubuntu:ubuntu /var/www/genai-bullet-app   
-cd /var/www/genai-bullet-app
+sudo mkdir -p $APP_DIR
+sudo chown $USER:$USER $APP_DIR
 
-# Create virtual environment
-echo "🐍 Creating Python virtual environment..."
+# Copy application files
+echo "🚚 Copying application files..."
+sudo cp -r app.py requirements.txt gunicorn.conf.py index.html script.js $APP_DIR/
+sudo chown -R $USER:$USER $APP_DIR
+
+# Create virtual environment and install dependencies
+echo "🐍 Setting up Python virtual environment..."
+cd $APP_DIR
 python3 -m venv venv
 source venv/bin/activate
-
-# Install Python dependencies
-echo "📚 Installing Python dependencies..."
 pip install --upgrade pip
-#chmod 777 requirements.txt
-pip install Flask requests google-genai gunicorn
+pip install -r requirements.txt
+deactivate
 
-# Create uploads directory
-echo "📁 Creating uploads directory..."
-mkdir -p uploads
-chmod 755 uploads
+# Create environment file
+echo "🔑 Creating environment file..."
+sudo tee $APP_DIR/.env > /dev/null <<EOF
+GENAI_API_KEY=$GENAI_API_KEY
+EOF
 
 # Create systemd service file
 echo "⚙️ Creating systemd service..."
 sudo tee /etc/systemd/system/genai-bullet-app.service > /dev/null <<EOF
 [Unit]
-Description Genai Bullet App Flask App
+Description=GenAI Bullet App Flask App
 After=network.target
 
 [Service]
-User=ubuntu
-WorkingDirectory=/var/www/genai-bullet-app
-Environment="PATH=/var/www/genai-bullet-app/venv/bin"
-ExecStart=/var/www/genai-bullet-app/venv/bin/python app.py
+User=$USER
+Group=$USER
+WorkingDirectory=$APP_DIR
+EnvironmentFile=$APP_DIR/.env
+ExecStart=$APP_DIR/venv/bin/gunicorn -c gunicorn.conf.py app:app
 Restart=always
+RestartSec=5s
 
 [Install]
 WantedBy=multi-user.target
@@ -64,10 +84,6 @@ server {
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-
-    location /static {
-        alias /var/www/genai-bullet-app;
     }
 }
 EOF
@@ -88,8 +104,8 @@ sudo systemctl status nginx --no-pager
 
 echo ""
 echo "🎉 Deployment completed!"
-echo "🌐 Your app is now running at: http://$(curl -s ifconfig.me)"
-echo "📁 Application directory: /var/www/genai-bullet-app"
+echo "🌐 Your app should now be running at: http://$(curl -s ifconfig.me)"
+echo "📁 Application directory: $APP_DIR"
 echo "📋 Useful commands:"
 echo "   - View logs: sudo journalctl -u genai-bullet-app -f"
 echo "   - Restart app: sudo systemctl restart genai-bullet-app"

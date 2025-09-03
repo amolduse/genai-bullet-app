@@ -26,7 +26,7 @@ source venv/bin/activate
 echo "📚 Installing Python dependencies..."
 pip install --upgrade pip
 #chmod 777 requirements.txt
-pip install Flask google-cloud-aiplatform requests
+pip install Flask google-cloud-aiplatform requests google-genai
 
 # Create uploads directory
 echo "📁 Creating uploads directory..."

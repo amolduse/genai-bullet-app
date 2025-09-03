@@ -1,4 +1,4 @@
-const apiUrl = 'http://localhost:5000/generate-bullets';
+const apiUrl = '/generate-bullets';
 
 document.getElementById('generate-button').addEventListener('click', async () => {
     const userInput = document.getElementById('user-input').value;
